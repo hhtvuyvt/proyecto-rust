@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rust Web Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,
+          Cantarell, sans-serif;
+      }
+      header {
+        padding: 2rem 1.5rem;
+        background: #111827;
+        color: #fff;
+      }
+      main {
+        padding: 1.5rem;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      a.btn {
+        display: inline-block;
+        padding: 0.6rem 1rem;
+        border-radius: 0.6rem;
+        text-decoration: none;
+        border: 1px solid #111827;
+      }
+      .row {
+        margin: 0.4rem 0;
+      }
+      code {
+        background: #f3f4f6;
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.3rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Rust Web Demo</h1>
+      <p>Axum 0.7 + SQLx (SQLite) + tower-http</p>
+    </header>
+    <main>
+      <p class="row">Rutas útiles:</p>
+      <ul>
+        <li><code>GET /</code> — saludo simple</li>
+        <li><code>GET /health</code> — health check</li>
+        <li><code>GET /api/users</code> — lista usuarios</li>
+        <li>
+          <code>POST /api/users</code> — crea usuario
+          <em>{ "name": "Alice" }</em>
+        </li>
+        <li><code>GET /api/users/:id</code> — obtiene usuario por UUID</li>
+        <li><code>DELETE /api/users/:id</code> — elimina usuario</li>
+      </ul>
+      <p class="row">
+        <a class="btn" href="/api/users" target="_blank">Probar /api/users</a>
+      </p>
+    </main>
+  </body>
+</html>
