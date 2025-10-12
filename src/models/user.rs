@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, FromRow, Clone)]
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct User {
     pub id: Uuid,
     pub name: String,
@@ -43,14 +43,14 @@ pub struct ValidationError {
     pub message: &'static str,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ValidationErrors {
     pub errors: Vec<ValidationError>,
 }
 
 impl ValidationErrors {
     pub fn new() -> Self {
-        Self { errors: Vec::new() }
+        Self::default()
     }
 
     pub fn push(&mut self, field: &'static str, message: &'static str) {
@@ -134,7 +134,10 @@ impl TryFrom<UpdateUser> for UserChanges {
         }
 
         if name.is_none() && email.is_none() {
-            errors.push("general", "Debe proporcionar al menos un campo para actualizar");
+            errors.push(
+                "general",
+                "Debe proporcionar al menos un campo para actualizar",
+            );
         }
 
         if errors.is_empty() {
@@ -146,9 +149,45 @@ impl TryFrom<UpdateUser> for UserChanges {
 }
 
 fn is_valid_email(email: &str) -> bool {
-    let at_position = email.find('@');
-    let dot_position = email.rfind('.');
+    // Verificar que no esté vacío
+    if email.is_empty() {
+        return false;
+    }
 
-    matches!(at_position, Some(at) if at > 0)
-        && matches!(dot_position, Some(dot) if dot > at_position.unwrap() + 1 && dot < email.len() - 1)
+    // Verificar que haya exactamente un @
+    let at_count = email.matches('@').count();
+    if at_count != 1 {
+        return false;
+    }
+
+    let at_position = email.find('@').unwrap();
+
+    // Verificar que el @ no esté al inicio o al final
+    if at_position == 0 || at_position == email.len() - 1 {
+        return false;
+    }
+
+    // Dividir en local y domain
+    let (local_part, domain_part) = email.split_at(at_position);
+    let domain_part = &domain_part[1..]; // Remover el @
+
+    // Verificar que la parte local no esté vacía
+    if local_part.is_empty() {
+        return false;
+    }
+
+    // Verificar que el dominio no esté vacío
+    if domain_part.is_empty() {
+        return false;
+    }
+
+    // Verificar que el dominio tenga al menos un punto
+    let dot_position = domain_part.rfind('.');
+    match dot_position {
+        Some(dot) => {
+            // El punto no puede estar al inicio o al final del dominio
+            dot > 0 && dot < domain_part.len() - 1
+        }
+        None => false,
+    }
 }
