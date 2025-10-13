@@ -17,7 +17,8 @@ async fn main() -> Result<()> {
     dotenv().ok();
     init_tracing();
 
-    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://db.sqlite".to_string());
+    let database_url =
+        env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://db.sqlite".to_string());
     let db_pool = SqlitePool::connect(&database_url)
         .await
         .with_context(|| format!("No se pudo conectar a la base de datos en {}", database_url))?;
@@ -50,8 +51,7 @@ async fn main() -> Result<()> {
 }
 
 fn init_tracing() {
-    let env_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     tracing_subscriber::fmt()
         .with_env_filter(env_filter)

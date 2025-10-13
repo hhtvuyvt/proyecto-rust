@@ -4,7 +4,7 @@ use axum::{
     routing::Router,
 };
 use http_body_util::BodyExt;
-use sqlx::{sqlite::SqlitePoolOptions};
+use sqlx::sqlite::SqlitePoolOptions;
 
 use rust_web_demo::{models, routes};
 
@@ -284,7 +284,9 @@ async fn update_user_with_empty_payload_returns_validation_error() {
 #[tokio::test]
 async fn update_user_partially_updates_only_provided_fields() {
     let context = TestContext::new().await;
-    let user = context.create_user("Original Name", "original@example.com").await;
+    let user = context
+        .create_user("Original Name", "original@example.com")
+        .await;
 
     // Solo actualizar el nombre
     let payload = serde_json::json!({
@@ -337,11 +339,11 @@ async fn update_user_with_invalid_email_returns_validation_error() {
 async fn create_user_sets_created_at_timestamp() {
     let context = TestContext::new().await;
     let before_creation = chrono::Utc::now();
-    
+
     let user = context.create_user("Test User", "test@example.com").await;
-    
+
     let after_creation = chrono::Utc::now();
-    
+
     assert!(user.created_at >= before_creation);
     assert!(user.created_at <= after_creation);
 }
@@ -370,12 +372,7 @@ async fn root_endpoint_returns_welcome_message() {
     let context = TestContext::new().await;
 
     let response = context
-        .request(
-            Request::builder()
-                .uri("/")
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .request(Request::builder().uri("/").body(Body::empty()).unwrap())
         .await;
 
     assert_eq!(response.status(), StatusCode::OK);
@@ -418,7 +415,7 @@ async fn create_user_with_mixed_case_email_normalizes_to_lowercase() {
 
     let response = context.post_json("/users", payload).await;
     assert_eq!(response.status(), StatusCode::CREATED);
-    
+
     let bytes = body_bytes(response).await;
     let user: models::user::User = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(user.email, "test@example.com");
@@ -434,7 +431,7 @@ async fn create_user_with_whitespace_around_fields_trims_whitespace() {
 
     let response = context.post_json("/users", payload).await;
     assert_eq!(response.status(), StatusCode::CREATED);
-    
+
     let bytes = body_bytes(response).await;
     let user: models::user::User = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(user.name, "Test User");
@@ -444,30 +441,36 @@ async fn create_user_with_whitespace_around_fields_trims_whitespace() {
 #[tokio::test]
 async fn update_user_with_whitespace_only_fields_ignores_them() {
     let context = TestContext::new().await;
-    let user = context.create_user("Original Name", "original@example.com").await;
-    
+    let user = context
+        .create_user("Original Name", "original@example.com")
+        .await;
+
     let payload = serde_json::json!({
         "name": "   ",
         "email": "   "
     });
 
-    let response = context.put_json(&format!("/users/{}", user.id), payload).await;
+    let response = context
+        .put_json(&format!("/users/{}", user.id), payload)
+        .await;
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]
 async fn list_users_returns_users_in_creation_order() {
     let context = TestContext::new().await;
-    
+
     let user1 = context.create_user("First User", "first@example.com").await;
-    let user2 = context.create_user("Second User", "second@example.com").await;
-    
+    let user2 = context
+        .create_user("Second User", "second@example.com")
+        .await;
+
     let response = context.get("/users").await;
     assert_eq!(response.status(), StatusCode::OK);
-    
+
     let bytes = body_bytes(response).await;
     let users: Vec<models::user::User> = serde_json::from_slice(&bytes).unwrap();
-    
+
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].id, user1.id);
     assert_eq!(users[1].id, user2.id);
@@ -503,7 +506,12 @@ async fn create_user_with_various_valid_email_formats_succeeds() {
         });
 
         let response = context.post_json("/users", payload).await;
-        assert_eq!(response.status(), StatusCode::CREATED, "Failed for email: {}", email);
+        assert_eq!(
+            response.status(),
+            StatusCode::CREATED,
+            "Failed for email: {}",
+            email
+        );
     }
 }
 
@@ -527,7 +535,12 @@ async fn create_user_with_invalid_email_formats_returns_validation_error() {
         });
 
         let response = context.post_json("/users", payload).await;
-        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY, "Should fail for email: {}", email);
+        assert_eq!(
+            response.status(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Should fail for email: {}",
+            email
+        );
     }
 }
 
@@ -536,7 +549,6 @@ struct TestContext {
 }
 
 impl TestContext {
-
     async fn new() -> Self {
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
@@ -603,15 +615,9 @@ impl TestContext {
     }
 
     async fn get(&self, uri: &str) -> http::Response<Body> {
-        self.request(
-            Request::builder()
-                .uri(uri)
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
+        self.request(Request::builder().uri(uri).body(Body::empty()).unwrap())
+            .await
     }
-
 }
 
 async fn body_bytes(response: http::Response<Body>) -> Vec<u8> {

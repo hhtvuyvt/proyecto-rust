@@ -26,14 +26,15 @@ pub async fn get_user(
     Path(id): Path<Uuid>,
     State(pool): State<Pool<Sqlite>>,
 ) -> Result<Json<User>, AppError> {
-    let user = sqlx::query_as::<_, User>("SELECT id, name, email, created_at FROM users WHERE id = ?")
-        .bind(id)
-        .fetch_one(&pool)
-        .await
-        .map_err(|error| match error {
-            sqlx::Error::RowNotFound => AppError::not_found(),
-            other => AppError::from(other),
-        })?;
+    let user =
+        sqlx::query_as::<_, User>("SELECT id, name, email, created_at FROM users WHERE id = ?")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .map_err(|error| match error {
+                sqlx::Error::RowNotFound => AppError::not_found(),
+                other => AppError::from(other),
+            })?;
 
     Ok(Json(user))
 }
@@ -47,16 +48,14 @@ pub async fn create_user(
     let id = Uuid::new_v4();
     let now = chrono::Utc::now();
 
-    sqlx::query(
-        "INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)",
-    )
-    .bind(id)
-    .bind(&validated.name)
-    .bind(&validated.email)
-    .bind(now)
-    .execute(&pool)
-    .await
-    .map_err(AppError::from)?;
+    sqlx::query("INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)")
+        .bind(id)
+        .bind(&validated.name)
+        .bind(&validated.email)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .map_err(AppError::from)?;
 
     let user = User {
         id,
@@ -76,16 +75,15 @@ pub async fn update_user(
     let changes = UserChanges::try_from(payload).map_err(AppError::validation)?;
 
     let mut transaction = pool.begin().await.map_err(AppError::from)?;
-    let current = sqlx::query_as::<_, User>(
-        "SELECT id, name, email, created_at FROM users WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_one(&mut *transaction)
-    .await
-    .map_err(|error| match error {
-        sqlx::Error::RowNotFound => AppError::not_found(),
-        other => AppError::from(other),
-    })?;
+    let current =
+        sqlx::query_as::<_, User>("SELECT id, name, email, created_at FROM users WHERE id = ?")
+            .bind(id)
+            .fetch_one(&mut *transaction)
+            .await
+            .map_err(|error| match error {
+                sqlx::Error::RowNotFound => AppError::not_found(),
+                other => AppError::from(other),
+            })?;
 
     let name = changes.name.unwrap_or(current.name);
     let email = changes.email.unwrap_or(current.email);
