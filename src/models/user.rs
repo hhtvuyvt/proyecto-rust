@@ -1,3 +1,9 @@
+//! Modelos y validaciones relacionados con usuarios.
+//!
+//! Define las estructuras que se intercambian en la capa HTTP (`CreateUser`, `UpdateUser`),
+//! los modelos de dominio (`User`, `NewUser`, `UserChanges`) y la lógica de validación
+//! necesaria para asegurar datos consistentes.
+
 use std::fmt;
 
 use chrono::{DateTime, Utc};
@@ -5,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+/// Representa a un usuario registrado en la base de datos.
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct User {
     pub id: Uuid,
@@ -13,50 +20,59 @@ pub struct User {
     pub created_at: DateTime<Utc>,
 }
 
+/// Payload esperado para crear un usuario a través de la API.
 #[derive(Debug, Deserialize)]
 pub struct CreateUser {
     pub name: String,
     pub email: String,
 }
 
+/// Payload esperado para actualizar parcialmente un usuario.
 #[derive(Debug, Deserialize)]
 pub struct UpdateUser {
     pub name: Option<String>,
     pub email: Option<String>,
 }
 
+/// Versión validada de un nuevo usuario lista para persistirse.
 #[derive(Debug, Clone)]
 pub struct NewUser {
     pub name: String,
     pub email: String,
 }
 
+/// Conjunto de cambios válidos sobre un usuario existente.
 #[derive(Debug, Clone)]
 pub struct UserChanges {
     pub name: Option<String>,
     pub email: Option<String>,
 }
 
+/// Error de validación asociado a un campo concreto.
 #[derive(Debug, Clone)]
 pub struct ValidationError {
     pub field: &'static str,
     pub message: &'static str,
 }
 
+/// Colección de errores de validación para una solicitud.
 #[derive(Debug, Clone, Default)]
 pub struct ValidationErrors {
     pub errors: Vec<ValidationError>,
 }
 
 impl ValidationErrors {
+    /// Construye una instancia vacía.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Añade un error asociado a un campo determinado.
     pub fn push(&mut self, field: &'static str, message: &'static str) {
         self.errors.push(ValidationError { field, message });
     }
 
+    /// Indica si no se registraron errores.
     pub fn is_empty(&self) -> bool {
         self.errors.is_empty()
     }
@@ -83,22 +99,25 @@ impl TryFrom<CreateUser> for NewUser {
     fn try_from(value: CreateUser) -> Result<Self, Self::Error> {
         let mut errors = ValidationErrors::new();
 
-        let name = value.name.trim().to_string();
-        if name.is_empty() {
+        let sanitized_name = value.name.trim().to_string();
+        if sanitized_name.is_empty() {
             errors.push("name", "Debe contener al menos un carácter");
-        } else if name.len() > 100 {
+        } else if sanitized_name.len() > 100 {
             errors.push("name", "Debe tener 100 caracteres o menos");
         }
 
-        let email = value.email.trim().to_lowercase();
-        if email.is_empty() {
+        let sanitized_email = value.email.trim().to_lowercase();
+        if sanitized_email.is_empty() {
             errors.push("email", "Debe contener al menos un carácter");
-        } else if !is_valid_email(&email) {
+        } else if !is_valid_email(&sanitized_email) {
             errors.push("email", "Formato de correo inválido");
         }
 
         if errors.is_empty() {
-            Ok(Self { name, email })
+            Ok(Self {
+                name: sanitized_name,
+                email: sanitized_email,
+            })
         } else {
             Err(errors)
         }
@@ -111,29 +130,29 @@ impl TryFrom<UpdateUser> for UserChanges {
     fn try_from(value: UpdateUser) -> Result<Self, Self::Error> {
         let mut errors = ValidationErrors::new();
 
-        let name = value
+        let sanitized_name = value
             .name
             .map(|name| name.trim().to_string())
             .filter(|name| !name.is_empty());
 
-        if let Some(ref name_value) = name {
-            if name_value.len() > 100 {
+        if let Some(ref candidate_name) = sanitized_name {
+            if candidate_name.len() > 100 {
                 errors.push("name", "Debe tener 100 caracteres o menos");
             }
         }
 
-        let email = value
+        let sanitized_email = value
             .email
             .map(|email| email.trim().to_lowercase())
             .filter(|email| !email.is_empty());
 
-        if let Some(ref email_value) = email {
-            if !is_valid_email(email_value) {
+        if let Some(ref candidate_email) = sanitized_email {
+            if !is_valid_email(candidate_email) {
                 errors.push("email", "Formato de correo inválido");
             }
         }
 
-        if name.is_none() && email.is_none() {
+        if sanitized_name.is_none() && sanitized_email.is_none() {
             errors.push(
                 "general",
                 "Debe proporcionar al menos un campo para actualizar",
@@ -141,13 +160,17 @@ impl TryFrom<UpdateUser> for UserChanges {
         }
 
         if errors.is_empty() {
-            Ok(Self { name, email })
+            Ok(Self {
+                name: sanitized_name,
+                email: sanitized_email,
+            })
         } else {
             Err(errors)
         }
     }
 }
 
+/// Valida que el correo tenga un formato mínimo aceptable.
 fn is_valid_email(email: &str) -> bool {
     // Verificar que no esté vacío
     if email.is_empty() {
